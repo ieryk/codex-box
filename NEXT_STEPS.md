@@ -1,16 +1,4 @@
-# Codex Box - następne kroki
-
-Stan na 25 sierpnia 2026 r. Repozytorium lokalne znajduje się w:
-
-```text
-.../Projekty/codex-box
-```
-
-Docelowe publiczne repozytorium:
-
-```text
-https://github.com/ieryk/codex-box
-```
+# Codex Box setup
 
 ## 1. Napraw logowanie GitHub CLI
 
