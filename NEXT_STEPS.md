@@ -3,7 +3,7 @@
 Stan na 25 sierpnia 2026 r. Repozytorium lokalne znajduje się w:
 
 ```text
-/Users/erykiwinski/.codex/.chatgpt-projects/g-p-6a862730d3d881918b8b4c50880696ec/codex-box
+.../Projekty/codex-box
 ```
 
 Docelowe publiczne repozytorium:
@@ -27,7 +27,7 @@ W przeglądarce zaloguj się na konto `ieryk` i zaakceptuj dostęp GitHub CLI.
 ## 2. Sprawdź lokalne repozytorium
 
 ```bash
-cd "/Users/erykiwinski/.codex/.chatgpt-projects/g-p-6a862730d3d881918b8b4c50880696ec/codex-box"
+cd ".../Projekty/codex-box"
 ./tests/smoke.sh
 git status --short
 git config user.name
@@ -155,4 +155,4 @@ box-doctor
 
 - Hermes jako osobisty asystent do zadań, przypomnień i komunikatorów.
 - Docker, dopóki konkretny projekt go nie potrzebuje.
-- OmniRoute — nie jest częścią obecnej architektury.
+- OmniRoute - nie jest częścią obecnej architektury.
