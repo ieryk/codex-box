@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+
+usage() {
+  echo "Użycie: box-clone OWNER/REPO | URL [KATALOG]" >&2
+  exit 2
+}
+
+SOURCE=${1:-}
+[[ -n "$SOURCE" ]] || usage
+
+NAME=${SOURCE##*/}
+NAME=${NAME%.git}
+DEST=${2:-"$HOME/src/$NAME"}
+
+if [[ -e "$DEST" ]]; then
+  echo "Katalog już istnieje: $DEST" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$DEST")"
+if [[ "$SOURCE" != *://* && "$SOURCE" != git@* && "$SOURCE" == */* ]]; then
+  gh repo clone "$SOURCE" "$DEST"
+else
+  git clone "$SOURCE" "$DEST"
+fi
+
+cd "$DEST"
+if [[ -f mise.toml || -f .mise.toml ]]; then
+  mise trust --yes
+  mise install
+fi
+
+echo "Gotowe: $DEST"

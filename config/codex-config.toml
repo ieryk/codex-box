@@ -1,0 +1,4 @@
+# Opcjonalny punkt wyjścia dla ~/.codex/config.toml.
+# Celowo nie przypinamy modelu ani polityki uprawnień: te ustawienia zmieniają się
+# i powinny być świadomą decyzją użytkownika albo konfiguracją konkretnego repo.
+

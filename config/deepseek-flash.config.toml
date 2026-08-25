@@ -1,0 +1,21 @@
+# Natywny profil Codex CLI dla DeepSeek Responses API.
+# Wybór: codex --profile deepseek-flash lub codex-deepseek
+# Sekret pochodzi wyłącznie ze zmiennej DEEPSEEK_API_KEY.
+
+model = "deepseek-v4-flash"
+model_provider = "deepseek"
+model_context_window = 1048576
+model_reasoning_effort = "high"
+model_reasoning_summary = "none"
+model_verbosity = "low"
+
+[model_providers.deepseek]
+name = "DeepSeek"
+base_url = "https://api.deepseek.com/"
+env_key = "DEEPSEEK_API_KEY"
+env_key_instructions = "Ustaw DEEPSEEK_API_KEY lub uruchom box-login."
+wire_api = "responses"
+request_max_retries = 4
+stream_max_retries = 5
+supports_websockets = false
+

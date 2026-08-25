@@ -1,0 +1,23 @@
+#cloud-config
+package_update: true
+package_upgrade: false
+
+packages:
+  - ca-certificates
+  - curl
+  - git
+
+write_files:
+  - path: /etc/default/codex-box
+    owner: root:root
+    permissions: "0644"
+    content: |
+      BOX_REPO_URL="https://github.com/ieryk/codex-box.git"
+      BOX_REPO_REF="v0.1.0"
+      TARGET_USER="ubuntu"
+      INSTALL_DOCKER="0"
+
+runcmd:
+  - [bash, -lc, 'set -a; source /etc/default/codex-box; set +a; rm -rf /opt/codex-box.new /opt/codex-box.previous; git clone --branch "$BOX_REPO_REF" --depth 1 "$BOX_REPO_URL" /opt/codex-box.new; if [ -d /opt/codex-box ]; then mv /opt/codex-box /opt/codex-box.previous; fi; mv /opt/codex-box.new /opt/codex-box; /opt/codex-box/bootstrap.sh >>/var/log/codex-box-bootstrap.log 2>&1']
+
+final_message: "Codex Box bootstrap finished after $UPTIME seconds"

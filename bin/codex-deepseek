@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+SECRETS_FILE="$HOME/.config/codex-box/secrets.env"
+
+if [[ -f "$SECRETS_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$SECRETS_FILE"
+fi
+
+if [[ -z ${DEEPSEEK_API_KEY:-} ]]; then
+  echo "Brak DEEPSEEK_API_KEY. Uruchom box-login albo ustaw zmienną ręcznie." >&2
+  exit 1
+fi
+
+exec codex --profile deepseek-flash "$@"
+

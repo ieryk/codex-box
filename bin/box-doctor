@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -u
+
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+SECRETS_FILE="$HOME/.config/codex-box/secrets.env"
+if [[ -f "$SECRETS_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$SECRETS_FILE"
+fi
+
+ok=0
+warn=0
+
+check_command() {
+  local command_name=$1
+  if command -v "$command_name" >/dev/null 2>&1; then
+    printf 'OK    %-12s %s\n' "$command_name" "$(command -v "$command_name")"
+  else
+    printf 'BRAK  %-12s\n' "$command_name"
+    warn=$((warn + 1))
+  fi
+}
+
+echo "Codex Box — diagnostyka"
+echo "OS:      $(. /etc/os-release && echo "$PRETTY_NAME")"
+echo "Arch:    $(uname -m)"
+echo "CPU:     $(nproc)"
+echo "RAM:     $(free -h | awk '/^Mem:/ {print $2}')"
+echo "Dysk /:  $(df -h / | awk 'NR==2 {print $4 " wolne z " $2}')"
+echo "Swap:    $(free -h | awk '/^Swap:/ {print $2}')"
+echo
+
+for cmd in git gh codex codex-deepseek mise node tailscale tmux rg fd fzf jq direnv shellcheck age; do
+  check_command "$cmd"
+done
+
+echo
+gh auth status >/dev/null 2>&1 && echo "OK    GitHub auth" || { echo "UWAGA GitHub: uruchom box-login"; warn=$((warn + 1)); }
+codex login status >/dev/null 2>&1 && echo "OK    Codex auth" || { echo "UWAGA Codex: uruchom box-login"; warn=$((warn + 1)); }
+tailscale status >/dev/null 2>&1 && echo "OK    Tailscale" || { echo "UWAGA Tailscale: uruchom box-login"; warn=$((warn + 1)); }
+[[ -f "$HOME/.codex/deepseek-flash.config.toml" ]] && echo "OK    DeepSeek profile" || { echo "UWAGA brak profilu DeepSeek"; warn=$((warn + 1)); }
+[[ -n ${DEEPSEEK_API_KEY:-} ]] && echo "OK    DeepSeek API key" || echo "INFO  DeepSeek fallback nieaktywny: uruchom box-login"
+
+echo
+if (( warn == 0 )); then
+  echo "Wszystko wygląda dobrze."
+else
+  echo "Ostrzeżenia: $warn"
+  ok=1
+fi
+exit "$ok"

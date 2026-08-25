@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+SECRETS_DIR="$HOME/.config/codex-box"
+SECRETS_FILE="$SECRETS_DIR/secrets.env"
+
+if [[ -f "$SECRETS_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$SECRETS_FILE"
+fi
+
+if [[ ${EUID} -eq 0 ]]; then
+  echo "Uruchom box-login jako zwykły użytkownik, nie przez sudo." >&2
+  exit 1
+fi
+
+echo "==> GitHub"
+if gh auth status >/dev/null 2>&1; then
+  gh auth status
+else
+  gh auth login --git-protocol ssh --web
+  gh auth setup-git
+fi
+
+echo "==> Codex"
+if codex login status >/dev/null 2>&1; then
+  codex login status
+else
+  echo "Na serwerze bez przeglądarki użyj kodu urządzenia."
+  codex login --device-auth
+fi
+
+echo "==> DeepSeek Flash (opcjonalny fallback)"
+if [[ -n ${DEEPSEEK_API_KEY:-} ]]; then
+  echo "Klucz DEEPSEEK_API_KEY jest skonfigurowany."
+else
+  read -r -s -p "DeepSeek API key (Enter, aby pominąć): " deepseek_key
+  echo
+  if [[ -n "$deepseek_key" ]]; then
+    install -d -m 0700 "$SECRETS_DIR"
+    umask 077
+    printf 'export DEEPSEEK_API_KEY=%q\n' "$deepseek_key" >"$SECRETS_FILE"
+    export DEEPSEEK_API_KEY="$deepseek_key"
+    unset deepseek_key
+    echo "Klucz zapisany lokalnie w $SECRETS_FILE (tryb 600)."
+  else
+    echo "Pominięto. Możesz wrócić do tego później przez box-login."
+  fi
+fi
+
+echo "==> Tailscale"
+if tailscale status >/dev/null 2>&1; then
+  tailscale status
+else
+  sudo tailscale up
+fi
+
+echo
+echo "Logowania zakończone. Sprawdź pełny stan poleceniem: box-doctor"

@@ -1,0 +1,18 @@
+# Repository guide
+
+## Setup
+
+- Install runtimes: `mise install`
+- Install dependencies with the lockfile-aware package manager.
+
+## Validation
+
+- Run the repository tests, linter, and build before handing off changes.
+- Add or update tests when behavior changes.
+
+## Rules
+
+- Keep changes scoped to the requested task.
+- Do not commit secrets or generated credentials.
+- Do not modify production infrastructure without explicit approval.
+

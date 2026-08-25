@@ -1,0 +1,6 @@
+[tools]
+node = "lts"
+python = "3.13"
+# go = "latest"
+# java = "temurin-21"
+

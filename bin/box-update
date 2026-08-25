@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+source /etc/default/codex-box
+REPO_DIR=/opt/codex-box
+
+if [[ ! -d "$REPO_DIR/.git" ]]; then
+  echo "Brak repozytorium w $REPO_DIR" >&2
+  exit 1
+fi
+
+if [[ -n "$(sudo git -C "$REPO_DIR" status --porcelain)" ]]; then
+  echo "Repozytorium $REPO_DIR ma lokalne zmiany; aktualizacja przerwana." >&2
+  exit 1
+fi
+
+sudo git -C "$REPO_DIR" fetch --tags origin
+if sudo git -C "$REPO_DIR" show-ref --verify --quiet "refs/remotes/origin/$BOX_REPO_REF"; then
+  sudo git -C "$REPO_DIR" checkout -B "$BOX_REPO_REF" "origin/$BOX_REPO_REF"
+else
+  sudo git -C "$REPO_DIR" checkout --detach "$BOX_REPO_REF"
+fi
+
+sudo env TARGET_USER="$TARGET_USER" INSTALL_DOCKER="$INSTALL_DOCKER" BOX_REPO_REF="$BOX_REPO_REF" "$REPO_DIR/bootstrap.sh"
+
