@@ -1,4 +1,4 @@
-# Codex Box — następne kroki
+# Codex Box - następne kroki
 
 Stan na 25 sierpnia 2026 r. Repozytorium lokalne znajduje się w:
 
