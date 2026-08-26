@@ -11,6 +11,8 @@ fi
 TARGET_USER=${TARGET_USER:-ubuntu}
 INSTALL_DOCKER=${INSTALL_DOCKER:-0}
 BOX_REPO_REF=${BOX_REPO_REF:-main}
+AGENT_PLAYBOOK_REPO_URL=${AGENT_PLAYBOOK_REPO_URL:-git@github.com:ieryk/agent-playbook.git}
+AGENT_PLAYBOOK_REPO_REF=${AGENT_PLAYBOOK_REPO_REF:-master}
 REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 [[ "$INSTALL_DOCKER" == 0 || "$INSTALL_DOCKER" == 1 ]] || {
@@ -133,7 +135,7 @@ fi
 systemctl enable --now tailscaled
 
 log "Narzędzia Codex Box"
-for tool in box-login box-clone box-update box-doctor codex-deepseek; do
+for tool in box-login box-clone box-update box-doctor box-playbook-sync codex-deepseek; do
   install -m 0755 "$REPO_DIR/bin/$tool" "/usr/local/bin/$tool"
 done
 
@@ -142,6 +144,8 @@ BOX_REPO_URL="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
 BOX_REPO_REF="$BOX_REPO_REF"
 TARGET_USER="$TARGET_USER"
 INSTALL_DOCKER="$INSTALL_DOCKER"
+AGENT_PLAYBOOK_REPO_URL="$AGENT_PLAYBOOK_REPO_URL"
+AGENT_PLAYBOOK_REPO_REF="$AGENT_PLAYBOOK_REPO_REF"
 EOF
 
 if [[ "$INSTALL_DOCKER" == 1 ]]; then

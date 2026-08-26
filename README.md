@@ -14,6 +14,7 @@ Infrastructure (Ampere A1). Repozytorium nie zawiera sekretów.
 - kompilatory i podstawowe biblioteki deweloperskie
 - 4 GB swapu i automatyczne aktualizacje bezpieczeństwa
 - opcjonalnie Docker Engine
+- prywatny Agent Playbook z globalnym `AGENTS.md`, workflowami i osobistymi skills
 
 Bootstrap jest idempotentny: można go uruchamiać ponownie po zmianie repozytorium.
 
@@ -27,6 +28,24 @@ sudo env TARGET_USER=ubuntu BOX_REPO_REF=main /opt/codex-box/bootstrap.sh
 box-doctor
 box-login
 ```
+
+Po uwierzytelnieniu GitHuba `box-login` klonuje prywatne repozytorium
+`ieryk/agent-playbook`, uruchamia jego instalator i podłącza:
+
+- globalne instrukcje jako `~/.codex/AGENTS.md`;
+- osobiste skills jako dowiązania w `~/.agents/skills/`.
+
+Późniejsze aktualizacje playbooka wykonuje polecenie:
+
+```bash
+box-playbook-sync
+```
+
+Agent Playbook pozostaje prywatny. Nie zawiera tokenów, sesji Codexa,
+reguł zatwierdzeń ani cache pluginów.
+
+OmniRoute, Hermes, LM Studio i lokalne modele pozostają elementami środowiska
+na Macu. Codex Box ich nie instaluje.
 
 Skrypty `box-*` same dodają do ścieżki programy użytkownika, więc zadziałają także
 w tej samej sesji SSH. Aby używać bezpośrednio `codex`, `mise` i `node`, otwórz
@@ -71,7 +90,7 @@ codex
 
 1. Skopiuj `cloud-init.yaml` do pliku poza repozytorium.
 2. Sprawdź `BOX_REPO_URL` i przypnij `BOX_REPO_REF` do wydanego tagu,
-   np. `v0.1.0`.
+   np. `v0.1.2`.
 3. Wklej plik jako initialization script podczas tworzenia instancji OCI.
 4. Po pierwszym SSH poczekaj na zakończenie:
 
@@ -91,7 +110,7 @@ dysku.
 Przed użyciem cloud-init wydaj sprawdzoną wersję:
 
 ```bash
-git tag v0.1.0
+git tag v0.1.2
 git push origin main --tags
 ```
 

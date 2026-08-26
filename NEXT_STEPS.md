@@ -1,146 +1,103 @@
-# Codex Box setup
+# Codex Box: następne kroki
 
-## 1. Napraw logowanie GitHub CLI
+Stan docelowy ma dwa aktywne repozytoria:
 
-Aktualne konto `ieryk` jest rozpoznane przez GitHub CLI, ale zapisany token jest
-nieważny. Wykonaj na Macu:
+- prywatny `agent-playbook` — kanoniczne skills, workflowy, szablony, globalny `AGENTS.md` i dokumentacja lokalnego harnessu na Macu;
+- publiczny `codex-box` — odtwarzalny serwer OCI, Codex, Tailscale i ręczny fallback DeepSeek.
 
-```bash
-gh auth login --hostname github.com --git-protocol ssh --web
-gh auth status
-```
+`ai-workflow` nie jest już potrzebny jako osobne repozytorium. Nie wypychaj go.
+Usuń lub zarchiwizuj je dopiero po udanym teście Agent Playbook na Macu i serwerze.
 
-W przeglądarce zaloguj się na konto `ieryk` i zaakceptuj dostęp GitHub CLI.
+## 1. Wypchnij Agent Playbook
 
-## 2. Sprawdź lokalne repozytorium
+Na Macu:
 
 ```bash
-cd ".../Projekty/codex-box"
+cd /Users/erykiwinski/Projekty/agent-playbook
 ./tests/smoke.sh
 git status --short
-git config user.name
-git config user.email
+git log -3 --oneline
+git push origin master
 ```
 
-Jeżeli dwie ostatnie komendy niczego nie pokażą, ustaw prawdziwe dane autora:
+Repozytorium musi pozostać prywatne. Nie może zawierać kluczy API, tokenów,
+sesji Codexa ani cache pluginów.
+
+## 2. Lokalna instalacja na Macu — wykonana
+
+Pierwsza migracja została wykonana 26 sierpnia 2026. Stare osobiste skills są w
+odzyskiwalnym backupie pod `~/.config/agent-playbook/`, a aktywne symlinki w
+`~/.agents/skills/` wskazują na `agent-playbook`.
+
+Przy kolejnych lokalnych aktualizacjach wystarczy:
 
 ```bash
-git config user.name "TWOJE IMIĘ I NAZWISKO"
-git config user.email "TWÓJ ADRES E-MAIL POWIĄZANY Z GITHUBEM"
+cd /Users/erykiwinski/Projekty/agent-playbook
+./install.sh
 ```
 
-## 3. Utwórz pierwszy commit
+Katalog `.system` pozostał nietknięty. Zamknij bieżące zadania Codexa i uruchom
+nowe, aby odświeżyć discovery skills i `AGENTS.md`.
+
+## 3. Wydaj Codex Box v0.1.2
+
+Na Macu:
 
 ```bash
-git add .
-git diff --cached --check
-git diff --cached --stat
-git commit -m "Initial Codex Box bootstrap"
-```
-
-Przed commitem sprawdź wyświetloną listę. W repozytorium nie może być klucza
-DeepSeek, `~/.codex/auth.json` ani innych sekretów.
-
-## 4. Utwórz publiczne repozytorium i wypchnij `main`
-
-```bash
-gh repo create codex-box --public --source=. --remote=origin --push
-git remote -v
-gh repo view --web
-```
-
-Polecenie `gh repo create` tworzy `https://github.com/ieryk/codex-box`, ustawia
-`origin` i wypycha aktualną gałąź `main`.
-
-## 5. Utwórz pierwsze stabilne wydanie
-
-```bash
-git tag -a v0.1.0 -m "First deployable Codex Box"
-git push origin v0.1.0
-git ls-remote --tags origin
-```
-
-Plik `cloud-init.yaml` jest już przypięty do `v0.1.0`.
-
-## 6. Wdróż na działającej instancji OCI
-
-Połącz się z serwerem:
-
-```bash
-ssh ubuntu@PUBLICZNY_ADRES_IP
-```
-
-Na serwerze wykonaj:
-
-```bash
-sudo git clone --branch v0.1.0 --depth 1 https://github.com/ieryk/codex-box.git /opt/codex-box
-sudo env TARGET_USER=ubuntu BOX_REPO_REF=v0.1.0 INSTALL_DOCKER=0 /opt/codex-box/bootstrap.sh
-exec bash -l
-box-doctor
-box-login
-```
-
-`box-login` przeprowadzi przez GitHub, oficjalny Codex, opcjonalny klucz DeepSeek
-i Tailscale. DeepSeek można pominąć Enterem i skonfigurować później.
-
-## 7. Sprawdź oba tryby Codexa
-
-Oficjalny Codex przez konto ChatGPT:
-
-```bash
-mkdir -p ~/src/codex-box-test
-cd ~/src/codex-box-test
-git init
-codex
-```
-
-Ręczny fallback/workhorse DeepSeek V4 Flash:
-
-```bash
-cd ~/src/codex-box-test
-codex-deepseek
-```
-
-Codex nie przełącza providera automatycznie. `codex-deepseek` uruchamia natywny
-profil DeepSeek bez OmniRoute.
-
-## 8. Potwierdź Tailscale przed zamknięciem publicznego SSH
-
-```bash
-tailscale status
-tailscale ip -4
-```
-
-Z Maca otwórz drugą, niezależną sesję:
-
-```bash
-ssh ubuntu@ADRES_TAILSCALE
-```
-
-Dopiero gdy druga sesja działa, można usunąć publiczną regułę TCP/22 w OCI.
-Nie zamykaj publicznego SSH przed tym testem.
-
-## 9. Kolejne aktualizacje
-
-Zmiany rozwijaj na `main`, testuj, a wdrażalne wersje oznaczaj nowym tagiem:
-
-```bash
-git add .
-git commit -m "Describe the change"
+cd /Users/erykiwinski/Projekty/codex-box
+./tests/smoke.sh
+git status --short
 git push origin main
-git tag -a v0.2.0 -m "Codex Box v0.2.0"
-git push origin v0.2.0
+git tag -a v0.1.2 -m "Codex Box v0.1.2"
+git push origin v0.1.2
 ```
 
-Na serwerze zmień `BOX_REPO_REF` w `/etc/default/codex-box` na nowy tag, a potem:
+Najpierw wypchnij `agent-playbook`, ponieważ Codex Box będzie go klonował po
+zalogowaniu do GitHuba.
+
+## 4. Zaktualizuj działający serwer
+
+W sesji SSH na serwerze:
 
 ```bash
+sudo sed -i 's/^BOX_REPO_REF=.*/BOX_REPO_REF="v0.1.2"/' /etc/default/codex-box
 box-update
+box-playbook-sync
 box-doctor
 ```
 
-## Odłożone na później
+`box-playbook-sync` klonuje prywatny `agent-playbook` do
+`~/.local/share/agent-playbook`, a potem uruchamia jego instalator. Nie używa
+`rsync`.
 
-- Hermes jako osobisty asystent do zadań, przypomnień i komunikatorów.
-- Docker, dopóki konkretny projekt go nie potrzebuje.
-- OmniRoute - nie jest częścią obecnej architektury.
+Po aktualizacji zamknij stare sesje Codexa na serwerze i uruchom nową sesję.
+
+## 5. Test końcowy
+
+Na Macu i serwerze sprawdź:
+
+```bash
+readlink ~/.codex/AGENTS.md
+find ~/.agents/skills -mindepth 2 -maxdepth 2 -name SKILL.md | sort
+```
+
+Następnie uruchom Codexa w testowym repozytorium i sprawdź `/status`. Globalny
+`AGENTS.md` powinien być aktywny, a osobiste skills dostępne bez duplikatów.
+
+## 6. Dopiero wtedy wycofaj `ai-workflow`
+
+Po udanym teście:
+
+- zachowaj checklistę Maca w `agent-playbook/docs/setup/mac-ai-harness-checklist.html`;
+- zarchiwizuj lokalny katalog i repozytorium GitHub `ai-workflow` albo usuń je,
+  jeśli na pewno nie zawiera niczego więcej;
+- nie instaluj równolegle całego repo AI Hero — służy tylko jako upstream do
+  świadomego wybierania pojedynczych ulepszeń.
+
+## Odłożone świadomie
+
+- Hermes jako osobisty asystent do zadań i komunikacji;
+- OmniRoute, Hermes, LM Studio i lokalne modele wyłącznie w lokalnym harnessie na Macu;
+- Docker na serwerze dopiero wtedy, gdy wymaga go konkretny projekt;
+- selektywna ocena nowych elementów AI Hero: `research`, `code-review` i zasada
+  redagowania sekretów z `diagnosing-bugs`.

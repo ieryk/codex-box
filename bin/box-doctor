@@ -30,7 +30,7 @@ echo "Dysk /:  $(df -h / | awk 'NR==2 {print $4 " wolne z " $2}')"
 echo "Swap:    $(free -h | awk '/^Swap:/ {print $2}')"
 echo
 
-for cmd in git gh codex codex-deepseek mise node tailscale tmux rg fd fzf jq direnv shellcheck age; do
+for cmd in git gh codex codex-deepseek box-playbook-sync mise node tailscale tmux rg fd fzf jq direnv shellcheck age; do
   check_command "$cmd"
 done
 
@@ -40,6 +40,14 @@ codex login status >/dev/null 2>&1 && echo "OK    Codex auth" || { echo "UWAGA C
 tailscale status >/dev/null 2>&1 && echo "OK    Tailscale" || { echo "UWAGA Tailscale: uruchom box-login"; warn=$((warn + 1)); }
 [[ -f "$HOME/.codex/deepseek-flash.config.toml" ]] && echo "OK    DeepSeek profile" || { echo "UWAGA brak profilu DeepSeek"; warn=$((warn + 1)); }
 [[ -n ${DEEPSEEK_API_KEY:-} ]] && echo "OK    DeepSeek API key" || echo "INFO  DeepSeek fallback nieaktywny: uruchom box-login"
+[[ -L "$HOME/.codex/AGENTS.md" && -r "$HOME/.codex/AGENTS.md" ]] && echo "OK    Agent Playbook AGENTS.md" || { echo "UWAGA Agent Playbook AGENTS.md: uruchom box-playbook-sync"; warn=$((warn + 1)); }
+skill_count=$(find "$HOME/.agents/skills" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')
+if (( skill_count > 0 )); then
+  echo "OK    Agent Playbook skills: $skill_count"
+else
+  echo "UWAGA brak osobistych skills: uruchom box-playbook-sync"
+  warn=$((warn + 1))
+fi
 
 echo
 if (( warn == 0 )); then

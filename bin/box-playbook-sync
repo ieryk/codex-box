@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ ${EUID} -eq 0 ]]; then
+  echo "Uruchom box-playbook-sync jako zwykły użytkownik, nie przez sudo." >&2
+  exit 1
+fi
+
+if [[ -r /etc/default/codex-box ]]; then
+  # shellcheck source=/dev/null
+  source /etc/default/codex-box
+fi
+
+AGENT_PLAYBOOK_REPO_URL=${AGENT_PLAYBOOK_REPO_URL:-git@github.com:ieryk/agent-playbook.git}
+AGENT_PLAYBOOK_REPO_REF=${AGENT_PLAYBOOK_REPO_REF:-master}
+AGENT_PLAYBOOK_DIR=${AGENT_PLAYBOOK_DIR:-$HOME/.local/share/agent-playbook}
+
+if [[ -d "$AGENT_PLAYBOOK_DIR/.git" ]]; then
+  current_url=$(git -C "$AGENT_PLAYBOOK_DIR" remote get-url origin)
+  if [[ "$current_url" != "$AGENT_PLAYBOOK_REPO_URL" ]]; then
+    echo "Nieoczekiwany origin w $AGENT_PLAYBOOK_DIR: $current_url" >&2
+    exit 1
+  fi
+  if [[ -n "$(git -C "$AGENT_PLAYBOOK_DIR" status --porcelain)" ]]; then
+    echo "Repozytorium $AGENT_PLAYBOOK_DIR ma lokalne zmiany; aktualizacja przerwana." >&2
+    exit 1
+  fi
+
+  git -C "$AGENT_PLAYBOOK_DIR" fetch --tags origin
+  if git -C "$AGENT_PLAYBOOK_DIR" show-ref --verify --quiet "refs/remotes/origin/$AGENT_PLAYBOOK_REPO_REF"; then
+    if git -C "$AGENT_PLAYBOOK_DIR" show-ref --verify --quiet "refs/heads/$AGENT_PLAYBOOK_REPO_REF"; then
+      git -C "$AGENT_PLAYBOOK_DIR" checkout "$AGENT_PLAYBOOK_REPO_REF"
+    else
+      git -C "$AGENT_PLAYBOOK_DIR" checkout -b "$AGENT_PLAYBOOK_REPO_REF" --track "origin/$AGENT_PLAYBOOK_REPO_REF"
+    fi
+    git -C "$AGENT_PLAYBOOK_DIR" merge --ff-only "origin/$AGENT_PLAYBOOK_REPO_REF"
+  else
+    git -C "$AGENT_PLAYBOOK_DIR" checkout --detach "$AGENT_PLAYBOOK_REPO_REF"
+  fi
+elif [[ -e "$AGENT_PLAYBOOK_DIR" ]]; then
+  echo "$AGENT_PLAYBOOK_DIR istnieje, ale nie jest repozytorium Git; niczego nie nadpisano." >&2
+  exit 1
+else
+  mkdir -p "$(dirname "$AGENT_PLAYBOOK_DIR")"
+  git clone --branch "$AGENT_PLAYBOOK_REPO_REF" --single-branch \
+    "$AGENT_PLAYBOOK_REPO_URL" "$AGENT_PLAYBOOK_DIR"
+fi
+
+[[ -x "$AGENT_PLAYBOOK_DIR/install.sh" ]] || {
+  echo "Brak wykonywalnego install.sh w Agent Playbook." >&2
+  exit 1
+}
+
+"$AGENT_PLAYBOOK_DIR/install.sh"
