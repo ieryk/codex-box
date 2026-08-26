@@ -27,7 +27,18 @@ TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 TARGET_GROUP=$(id -gn "$TARGET_USER")
 
 log() { printf '\n==> %s\n' "$*"; }
-as_user() { sudo -H -u "$TARGET_USER" bash -lc "$1"; }
+as_user() {
+  sudo -u "$TARGET_USER" env \
+    HOME="$TARGET_HOME" \
+    USER="$TARGET_USER" \
+    LOGNAME="$TARGET_USER" \
+    MISE_CACHE_DIR="$TARGET_HOME/.cache/mise" \
+    MISE_CONFIG_DIR="$TARGET_HOME/.config/mise" \
+    MISE_DATA_DIR="$TARGET_HOME/.local/share/mise" \
+    MISE_STATE_DIR="$TARGET_HOME/.local/state/mise" \
+    PATH="$TARGET_HOME/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" \
+    bash -c "$1"
+}
 
 log "Pakiety systemowe"
 apt-get update
@@ -66,8 +77,25 @@ EOF
 
 log "Konfiguracja powłoki, Codexa i tmux"
 install -d -m 0755 -o "$TARGET_USER" -g "$TARGET_GROUP" \
-  "$TARGET_HOME/.codex" "$TARGET_HOME/.config" "$TARGET_HOME/.local/bin" "$TARGET_HOME/src"
-install -d -m 0700 -o "$TARGET_USER" -g "$TARGET_GROUP" "$TARGET_HOME/.config/codex-box"
+  "$TARGET_HOME/.cache/mise" \
+  "$TARGET_HOME/.codex" \
+  "$TARGET_HOME/.config" \
+  "$TARGET_HOME/.config/mise" \
+  "$TARGET_HOME/.local" \
+  "$TARGET_HOME/.local/bin" \
+  "$TARGET_HOME/.local/share" \
+  "$TARGET_HOME/.local/share/mise" \
+  "$TARGET_HOME/.local/state/mise" \
+  "$TARGET_HOME/src"
+install -d -m 0700 -o "$TARGET_USER" -g "$TARGET_GROUP" \
+  "$TARGET_HOME/.config/codex-box"
+chown "$TARGET_USER:$TARGET_GROUP" "$TARGET_HOME/.local" "$TARGET_HOME/.local/share"
+chown -R "$TARGET_USER:$TARGET_GROUP" \
+  "$TARGET_HOME/.cache/mise" \
+  "$TARGET_HOME/.config/mise" \
+  "$TARGET_HOME/.local/bin" \
+  "$TARGET_HOME/.local/share/mise" \
+  "$TARGET_HOME/.local/state/mise"
 install -m 0644 -o "$TARGET_USER" -g "$TARGET_GROUP" "$REPO_DIR/config/tmux.conf" "$TARGET_HOME/.tmux.conf"
 install -m 0644 -o "$TARGET_USER" -g "$TARGET_GROUP" \
   "$REPO_DIR/config/deepseek-flash.config.toml" "$TARGET_HOME/.codex/deepseek-flash.config.toml"
@@ -96,7 +124,7 @@ as_user 'export PATH="$HOME/.local/bin:$PATH"; mise use --global node@lts'
 
 log "Codex CLI"
 # Oficjalny instalator jest również mechanizmem aktualizacji Codex CLI.
-as_user 'curl -fsSL https://chatgpt.com/codex/install.sh | sh'
+as_user 'curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh'
 
 log "Tailscale"
 if ! command -v tailscale >/dev/null 2>&1; then
