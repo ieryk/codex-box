@@ -10,13 +10,16 @@ Infrastructure (Ampere A1). Repozytorium nie zawiera sekretów.
 - `mise` oraz domyślny Node.js LTS
 - Git, Git LFS i GitHub CLI
 - Tailscale
-- `tmux`, `ripgrep`, `fd`, `fzf`, `jq`, `direnv`, `shellcheck`, `age`
+- `tmux`, `nano`, `vi`/`vim`, `less`, `tree`, `ripgrep`, `fd`, `fzf`, `jq`,
+  `direnv`, `shellcheck`, `age`
 - kompilatory i podstawowe biblioteki deweloperskie
 - 4 GB swapu i automatyczne aktualizacje bezpieczeństwa
 - opcjonalnie Docker Engine
 - prywatny Agent Playbook z globalnym `AGENTS.md`, workflowami i osobistymi skills
 
 Bootstrap jest idempotentny: można go uruchamiać ponownie po zmianie repozytorium.
+Domyślnym edytorem terminalowym jest `nano`; pełny `vim` pozostaje dostępny dla
+użytkownika i skryptów, które go wymagają.
 
 ## Pierwsze wdrożenie na działającej instancji
 

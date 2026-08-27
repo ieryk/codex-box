@@ -49,8 +49,8 @@ add-apt-repository -y universe
 apt-get update
 apt-get install -y --no-install-recommends \
   age build-essential ca-certificates curl direnv fd-find file fzf gh git git-lfs \
-  gnupg jq locales lsb-release pkg-config ripgrep rsync shellcheck sudo tmux \
-  unattended-upgrades unzip xz-utils zip
+  gnupg jq less locales lsb-release nano pkg-config ripgrep rsync shellcheck sudo \
+  tmux tree unattended-upgrades unzip vim xz-utils zip
 
 git lfs install --system
 
@@ -105,17 +105,20 @@ touch "$TARGET_HOME/.bashrc"
 chown "$TARGET_USER:$TARGET_GROUP" "$TARGET_HOME/.bashrc"
 
 PROFILE_BEGIN='# >>> codex-box >>>'
-if ! grep -Fq "$PROFILE_BEGIN" "$TARGET_HOME/.bashrc"; then
-  cat >>"$TARGET_HOME/.bashrc" <<'EOF'
+if grep -Fq "$PROFILE_BEGIN" "$TARGET_HOME/.bashrc"; then
+  sed -i '/^# >>> codex-box >>>$/,/^# <<< codex-box <<<$/{d;}' "$TARGET_HOME/.bashrc"
+fi
+cat >>"$TARGET_HOME/.bashrc" <<'EOF'
 
 # >>> codex-box >>>
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
+export EDITOR="${EDITOR:-nano}"
+export VISUAL="${VISUAL:-nano}"
 [[ -f "$HOME/.config/codex-box/secrets.env" ]] && source "$HOME/.config/codex-box/secrets.env"
 eval "$(mise activate bash)"
 eval "$(direnv hook bash)"
 # <<< codex-box <<<
 EOF
-fi
 chown "$TARGET_USER:$TARGET_GROUP" "$TARGET_HOME/.bashrc"
 
 log "mise i Node.js LTS"

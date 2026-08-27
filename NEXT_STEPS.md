@@ -97,6 +97,8 @@ Po udanym teście:
 ## Odłożone świadomie
 
 - Hermes jako osobisty asystent do zadań i komunikacji;
+- Open WebUI Computer jako opcjonalny, mobilny interfejs do Codexa — dopiero po
+  ustabilizowaniu bazowego boxa i wyłącznie przez Tailscale, bez publicznego portu;
 - OmniRoute, Hermes, LM Studio i lokalne modele wyłącznie w lokalnym harnessie na Macu;
 - Docker na serwerze dopiero wtedy, gdy wymaga go konkretny projekt;
 - selektywna ocena nowych elementów AI Hero: `research`, `code-review` i zasada

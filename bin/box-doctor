@@ -30,7 +30,7 @@ echo "Dysk /:  $(df -h / | awk 'NR==2 {print $4 " wolne z " $2}')"
 echo "Swap:    $(free -h | awk '/^Swap:/ {print $2}')"
 echo
 
-for cmd in git gh codex codex-deepseek box-playbook-sync mise node tailscale tmux rg fd fzf jq direnv shellcheck age; do
+for cmd in git gh codex codex-deepseek box-playbook-sync mise node tailscale tmux nano vi vim rg fd fzf jq direnv shellcheck age; do
   check_command "$cmd"
 done
 
