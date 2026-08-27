@@ -5,6 +5,26 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 SECRETS_FILE="$HOME/.config/codex-box/secrets.env"
 INSTALL_COMPUTER=0
 CPTR_PORT=8000
+
+count_skills() {
+  local skills_dir=${1:-$HOME/.agents/skills}
+  local skill_count=0
+  local skill_dir
+
+  for skill_dir in "$skills_dir"/*; do
+    if [[ -r "$skill_dir/SKILL.md" ]]; then
+      skill_count=$((skill_count + 1))
+    fi
+  done
+
+  printf '%s\n' "$skill_count"
+}
+
+if [[ ${1:-} == --count-skills ]]; then
+  count_skills "${2:-$HOME/.agents/skills}"
+  exit 0
+fi
+
 if [[ -r /etc/default/codex-box ]]; then
   # shellcheck source=/dev/null
   source /etc/default/codex-box
@@ -16,6 +36,13 @@ fi
 
 ok=0
 warn=0
+OS_NAME="nieznany"
+
+if [[ -r /etc/os-release ]]; then
+  # shellcheck source=/dev/null
+  source /etc/os-release
+  OS_NAME=${PRETTY_NAME:-$OS_NAME}
+fi
 
 check_command() {
   local command_name=$1
@@ -28,7 +55,7 @@ check_command() {
 }
 
 echo "Codex Box — diagnostyka"
-echo "OS:      $(. /etc/os-release && echo "$PRETTY_NAME")"
+echo "OS:      $OS_NAME"
 echo "Arch:    $(uname -m)"
 echo "CPU:     $(nproc)"
 echo "RAM:     $(free -h | awk '/^Mem:/ {print $2}')"
@@ -41,11 +68,35 @@ for cmd in git gh codex codex-deepseek box-playbook-sync box-computer mise node 
 done
 
 echo
-gh auth status >/dev/null 2>&1 && echo "OK    GitHub auth" || { echo "UWAGA GitHub: uruchom box-login"; warn=$((warn + 1)); }
-codex login status >/dev/null 2>&1 && echo "OK    Codex auth" || { echo "UWAGA Codex: uruchom box-login"; warn=$((warn + 1)); }
-tailscale status >/dev/null 2>&1 && echo "OK    Tailscale" || { echo "UWAGA Tailscale: uruchom box-login"; warn=$((warn + 1)); }
-[[ -f "$HOME/.codex/deepseek-flash.config.toml" ]] && echo "OK    DeepSeek profile" || { echo "UWAGA brak profilu DeepSeek"; warn=$((warn + 1)); }
-[[ -n ${DEEPSEEK_API_KEY:-} ]] && echo "OK    DeepSeek API key" || echo "INFO  DeepSeek fallback nieaktywny: uruchom box-login"
+if gh auth status >/dev/null 2>&1; then
+  echo "OK    GitHub auth"
+else
+  echo "UWAGA GitHub: uruchom box-login"
+  warn=$((warn + 1))
+fi
+if codex login status >/dev/null 2>&1; then
+  echo "OK    Codex auth"
+else
+  echo "UWAGA Codex: uruchom box-login"
+  warn=$((warn + 1))
+fi
+if tailscale status >/dev/null 2>&1; then
+  echo "OK    Tailscale"
+else
+  echo "UWAGA Tailscale: uruchom box-login"
+  warn=$((warn + 1))
+fi
+if [[ -f "$HOME/.codex/deepseek-flash.config.toml" ]]; then
+  echo "OK    DeepSeek profile"
+else
+  echo "UWAGA brak profilu DeepSeek"
+  warn=$((warn + 1))
+fi
+if [[ -n ${DEEPSEEK_API_KEY:-} ]]; then
+  echo "OK    DeepSeek API key"
+else
+  echo "INFO  DeepSeek fallback nieaktywny: uruchom box-login"
+fi
 if [[ "$INSTALL_COMPUTER" == 1 || -f /etc/systemd/system/codex-box-computer.service ]]; then
   if systemctl is-active --quiet codex-box-computer.service; then
     echo "OK    Computer service"
@@ -62,8 +113,13 @@ if [[ "$INSTALL_COMPUTER" == 1 || -f /etc/systemd/system/codex-box-computer.serv
 else
   echo "INFO  Open WebUI Computer wyłączony (INSTALL_COMPUTER=0)"
 fi
-[[ -L "$HOME/.codex/AGENTS.md" && -r "$HOME/.codex/AGENTS.md" ]] && echo "OK    Agent Playbook AGENTS.md" || { echo "UWAGA Agent Playbook AGENTS.md: uruchom box-playbook-sync"; warn=$((warn + 1)); }
-skill_count=$(find "$HOME/.agents/skills" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')
+if [[ -L "$HOME/.codex/AGENTS.md" && -r "$HOME/.codex/AGENTS.md" ]]; then
+  echo "OK    Agent Playbook AGENTS.md"
+else
+  echo "UWAGA Agent Playbook AGENTS.md: uruchom box-playbook-sync"
+  warn=$((warn + 1))
+fi
+skill_count=$(count_skills)
 if (( skill_count > 0 )); then
   echo "OK    Agent Playbook skills: $skill_count"
 else

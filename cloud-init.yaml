@@ -13,7 +13,7 @@ write_files:
     permissions: "0644"
     content: |
       BOX_REPO_URL="https://github.com/ieryk/codex-box.git"
-      BOX_REPO_REF="v0.2.0"
+      BOX_REPO_REF="v0.2.1"
       TARGET_USER="ubuntu"
       INSTALL_DOCKER="0"
       INSTALL_COMPUTER="1"

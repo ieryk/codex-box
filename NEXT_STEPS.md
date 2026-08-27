@@ -39,7 +39,7 @@ cd /Users/erykiwinski/Projekty/agent-playbook
 Katalog `.system` pozostał nietknięty. Zamknij bieżące zadania Codexa i uruchom
 nowe, aby odświeżyć discovery skills i `AGENTS.md`.
 
-## 3. Wydaj Codex Box v0.2.0
+## 3. Wydaj Codex Box v0.2.1
 
 Na Macu:
 
@@ -48,8 +48,8 @@ cd /Users/erykiwinski/Projekty/codex-box
 ./tests/smoke.sh
 git status --short
 git push origin main
-git tag -a v0.2.0 -m "Codex Box v0.2.0"
-git push origin v0.2.0
+git tag -a v0.2.1 -m "Codex Box v0.2.1"
+git push origin v0.2.1
 ```
 
 Najpierw wypchnij `agent-playbook`, ponieważ Codex Box będzie go klonował po
@@ -60,7 +60,7 @@ zalogowaniu do GitHuba.
 W sesji SSH na serwerze:
 
 ```bash
-sudo sed -i 's/^BOX_REPO_REF=.*/BOX_REPO_REF="v0.2.0"/' /etc/default/codex-box
+sudo sed -i 's/^BOX_REPO_REF=.*/BOX_REPO_REF="v0.2.1"/' /etc/default/codex-box
 box-update
 box-playbook-sync
 box-doctor
@@ -78,7 +78,7 @@ Pierwsze przejście ze starszej wersji wymaga jawnego włączenia komponentu:
 
 ```bash
 sudo env TARGET_USER=ubuntu INSTALL_COMPUTER=1 CPTR_VERSION=0.9.21 CPTR_PORT=8000 \
-  BOX_REPO_REF=v0.2.0 /opt/codex-box/bootstrap.sh
+  BOX_REPO_REF=v0.2.1 /opt/codex-box/bootstrap.sh
 box-computer setup
 ```
 
@@ -91,7 +91,7 @@ Na Macu i serwerze sprawdź:
 
 ```bash
 readlink ~/.codex/AGENTS.md
-find ~/.agents/skills -mindepth 2 -maxdepth 2 -name SKILL.md | sort
+find -L ~/.agents/skills -mindepth 2 -maxdepth 2 -name SKILL.md | sort
 ```
 
 Następnie uruchom Codexa w testowym repozytorium i sprawdź `/status`. Globalny

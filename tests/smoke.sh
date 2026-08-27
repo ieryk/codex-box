@@ -28,12 +28,12 @@ grep -q 'INSTALL_COMPUTER=' "$ROOT/cloud-init.yaml"
 grep -q 'CPTR_VERSION=' "$ROOT/cloud-init.yaml"
 grep -q 'CPTR_PORT=' "$ROOT/cloud-init.yaml"
 grep -q 'AGENT_PLAYBOOK_REPO_URL=' "$ROOT/cloud-init.yaml"
-grep -Fq 'HOME="$TARGET_HOME"' "$ROOT/bootstrap.sh"
-grep -Fq 'MISE_DATA_DIR="$TARGET_HOME/.local/share/mise"' "$ROOT/bootstrap.sh"
-grep -Fq '"$TARGET_HOME/.local/share/mise"' "$ROOT/bootstrap.sh"
+grep -Fq "HOME=\"\$TARGET_HOME\"" "$ROOT/bootstrap.sh"
+grep -Fq "MISE_DATA_DIR=\"\$TARGET_HOME/.local/share/mise\"" "$ROOT/bootstrap.sh"
+grep -Fq "\"\$TARGET_HOME/.local/share/mise\"" "$ROOT/bootstrap.sh"
 grep -Fq 'gnupg jq less locales lsb-release nano' "$ROOT/bootstrap.sh"
 grep -Fq 'tmux tree unattended-upgrades unzip vim' "$ROOT/bootstrap.sh"
-grep -Fq 'export EDITOR="${EDITOR:-nano}"' "$ROOT/bootstrap.sh"
+grep -Fq "export EDITOR=\"\${EDITOR:-nano}\"" "$ROOT/bootstrap.sh"
 grep -Fq "sed -i '/^# >>> codex-box >>>$/,/^# <<< codex-box <<<$/" "$ROOT/bootstrap.sh"
 grep -Fq 'CODEX_NON_INTERACTIVE=1 sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bootstrap.sh"
@@ -41,13 +41,24 @@ grep -Fq 'box-computer' "$ROOT/bootstrap.sh"
 grep -Fq 'scripts/install-computer.sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bin/box-login"
 grep -Fq 'box-playbook-sync box-computer mise' "$ROOT/bin/box-doctor"
-grep -Fq 'cptr[agents,docs,mcp]==$CPTR_VERSION' "$ROOT/scripts/install-computer.sh"
+grep -Fq "cptr[agents,docs,mcp]==\$CPTR_VERSION" "$ROOT/scripts/install-computer.sh"
 grep -Fq 'cptr run --headless --host 127.0.0.1' "$ROOT/scripts/install-computer.sh"
-grep -Fq 'tailscale serve --bg --yes "$LOCAL_URL"' "$ROOT/bin/box-computer"
+grep -Fq "tailscale serve --bg --yes \"\$LOCAL_URL\"" "$ROOT/bin/box-computer"
 grep -q 'model = "deepseek-v4-flash"' "$ROOT/config/deepseek-flash.config.toml"
 grep -q 'env_key = "DEEPSEEK_API_KEY"' "$ROOT/config/deepseek-flash.config.toml"
 if rg -n 'experimental_bearer_token|sk-[A-Za-z0-9]' "$ROOT/config"; then
   echo "Konfiguracja nie może zawierać jawnego klucza API." >&2
+  exit 1
+fi
+
+skills_fixture=$(mktemp -d)
+trap 'rm -rf "$skills_fixture"' EXIT
+mkdir -p "$skills_fixture/source/example-skill" "$skills_fixture/installed"
+touch "$skills_fixture/source/example-skill/SKILL.md"
+ln -s "$skills_fixture/source/example-skill" "$skills_fixture/installed/example-skill"
+skill_count=$("$ROOT/bin/box-doctor" --count-skills "$skills_fixture/installed")
+if [[ "$skill_count" != 1 ]]; then
+  echo "box-doctor nie policzył skillu zainstalowanego przez symlink." >&2
   exit 1
 fi
 

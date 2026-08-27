@@ -19,10 +19,10 @@ fi
   echo "Nieprawidłowa wersja CPTR_VERSION=$CPTR_VERSION" >&2
   exit 1
 }
-[[ "$CPTR_PORT" =~ ^[0-9]+$ ]] && (( CPTR_PORT >= 1024 && CPTR_PORT <= 65535 )) || {
+if [[ ! "$CPTR_PORT" =~ ^[0-9]+$ ]] || (( CPTR_PORT < 1024 || CPTR_PORT > 65535 )); then
   echo "CPTR_PORT musi być liczbą od 1024 do 65535." >&2
   exit 1
-}
+fi
 
 TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 TARGET_GROUP=$(id -gn "$TARGET_USER")

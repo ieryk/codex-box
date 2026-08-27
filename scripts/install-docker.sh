@@ -7,6 +7,7 @@ if [[ ${EUID} -ne 0 ]]; then
 fi
 
 TARGET_USER=${1:-ubuntu}
+# shellcheck source=/dev/null
 . /etc/os-release
 [[ "$ID" == ubuntu ]] || { echo "Skrypt obsługuje Ubuntu." >&2; exit 1; }
 
@@ -26,4 +27,3 @@ systemctl enable --now docker
 usermod -aG docker "$TARGET_USER"
 
 echo "Docker gotowy. Użytkownik $TARGET_USER musi zalogować się ponownie."
-

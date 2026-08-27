@@ -30,10 +30,10 @@ REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
   echo "Nieprawidłowa wersja CPTR_VERSION=$CPTR_VERSION" >&2
   exit 1
 }
-[[ "$CPTR_PORT" =~ ^[0-9]+$ ]] && (( CPTR_PORT >= 1024 && CPTR_PORT <= 65535 )) || {
+if [[ ! "$CPTR_PORT" =~ ^[0-9]+$ ]] || (( CPTR_PORT < 1024 || CPTR_PORT > 65535 )); then
   echo "CPTR_PORT musi być liczbą od 1024 do 65535." >&2
   exit 1
-}
+fi
 
 if ! id "$TARGET_USER" >/dev/null 2>&1; then
   echo "Nie istnieje użytkownik TARGET_USER=$TARGET_USER" >&2
@@ -140,7 +140,7 @@ log "mise i Node.js LTS"
 if [[ ! -x "$TARGET_HOME/.local/bin/mise" ]]; then
   as_user 'curl -fsSL https://mise.run | sh'
 fi
-as_user 'export PATH="$HOME/.local/bin:$PATH"; mise use --global node@lts'
+as_user "export PATH=\"\$HOME/.local/bin:\$PATH\"; mise use --global node@lts"
 
 log "Codex CLI"
 # Oficjalny instalator jest również mechanizmem aktualizacji Codex CLI.

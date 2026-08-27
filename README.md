@@ -94,7 +94,7 @@ codex
 
 1. Skopiuj `cloud-init.yaml` do pliku poza repozytorium.
 2. Sprawdź `BOX_REPO_URL` i przypnij `BOX_REPO_REF` do wydanego tagu,
-   np. `v0.2.0`.
+   np. `v0.2.1`.
 3. Wklej plik jako initialization script podczas tworzenia instancji OCI.
 4. Po pierwszym SSH poczekaj na zakończenie:
 
@@ -114,7 +114,7 @@ dysku.
 Przed użyciem cloud-init wydaj sprawdzoną wersję:
 
 ```bash
-git tag v0.2.0
+git tag v0.2.1
 git push origin main --tags
 ```
 

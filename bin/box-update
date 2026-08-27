@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+# shellcheck source=/dev/null
 source /etc/default/codex-box
 REPO_DIR=/opt/codex-box
 INSTALL_COMPUTER=${INSTALL_COMPUTER:-0}
