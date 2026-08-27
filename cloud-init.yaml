@@ -13,9 +13,12 @@ write_files:
     permissions: "0644"
     content: |
       BOX_REPO_URL="https://github.com/ieryk/codex-box.git"
-      BOX_REPO_REF="v0.1.2"
+      BOX_REPO_REF="v0.2.0"
       TARGET_USER="ubuntu"
       INSTALL_DOCKER="0"
+      INSTALL_COMPUTER="1"
+      CPTR_VERSION="0.9.21"
+      CPTR_PORT="8000"
       AGENT_PLAYBOOK_REPO_URL="git@github.com:ieryk/agent-playbook.git"
       AGENT_PLAYBOOK_REPO_REF="master"
 

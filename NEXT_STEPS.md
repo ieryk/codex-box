@@ -39,7 +39,7 @@ cd /Users/erykiwinski/Projekty/agent-playbook
 Katalog `.system` pozostał nietknięty. Zamknij bieżące zadania Codexa i uruchom
 nowe, aby odświeżyć discovery skills i `AGENTS.md`.
 
-## 3. Wydaj Codex Box v0.1.2
+## 3. Wydaj Codex Box v0.2.0
 
 Na Macu:
 
@@ -48,8 +48,8 @@ cd /Users/erykiwinski/Projekty/codex-box
 ./tests/smoke.sh
 git status --short
 git push origin main
-git tag -a v0.1.2 -m "Codex Box v0.1.2"
-git push origin v0.1.2
+git tag -a v0.2.0 -m "Codex Box v0.2.0"
+git push origin v0.2.0
 ```
 
 Najpierw wypchnij `agent-playbook`, ponieważ Codex Box będzie go klonował po
@@ -60,7 +60,7 @@ zalogowaniu do GitHuba.
 W sesji SSH na serwerze:
 
 ```bash
-sudo sed -i 's/^BOX_REPO_REF=.*/BOX_REPO_REF="v0.1.2"/' /etc/default/codex-box
+sudo sed -i 's/^BOX_REPO_REF=.*/BOX_REPO_REF="v0.2.0"/' /etc/default/codex-box
 box-update
 box-playbook-sync
 box-doctor
@@ -72,7 +72,20 @@ box-doctor
 
 Po aktualizacji zamknij stare sesje Codexa na serwerze i uruchom nową sesję.
 
-## 5. Test końcowy
+## 5. Włącz Open WebUI Computer
+
+Pierwsze przejście ze starszej wersji wymaga jawnego włączenia komponentu:
+
+```bash
+sudo env TARGET_USER=ubuntu INSTALL_COMPUTER=1 CPTR_VERSION=0.9.21 CPTR_PORT=8000 \
+  BOX_REPO_REF=v0.2.0 /opt/codex-box/bootstrap.sh
+box-computer setup
+```
+
+Po utworzeniu konta w przeglądarce dodaj profil Codex opisany w `README.md`.
+Port 8000 pozostaje zamknięty w OCI; dostęp odbywa się przez Tailscale Serve.
+
+## 6. Test końcowy
 
 Na Macu i serwerze sprawdź:
 
@@ -84,7 +97,7 @@ find ~/.agents/skills -mindepth 2 -maxdepth 2 -name SKILL.md | sort
 Następnie uruchom Codexa w testowym repozytorium i sprawdź `/status`. Globalny
 `AGENTS.md` powinien być aktywny, a osobiste skills dostępne bez duplikatów.
 
-## 6. Dopiero wtedy wycofaj `ai-workflow`
+## 7. Dopiero wtedy wycofaj `ai-workflow`
 
 Po udanym teście:
 
@@ -97,8 +110,6 @@ Po udanym teście:
 ## Odłożone świadomie
 
 - Hermes jako osobisty asystent do zadań i komunikacji;
-- Open WebUI Computer jako opcjonalny, mobilny interfejs do Codexa — dopiero po
-  ustabilizowaniu bazowego boxa i wyłącznie przez Tailscale, bez publicznego portu;
 - OmniRoute, Hermes, LM Studio i lokalne modele wyłącznie w lokalnym harnessie na Macu;
 - Docker na serwerze dopiero wtedy, gdy wymaga go konkretny projekt;
 - selektywna ocena nowych elementów AI Hero: `research`, `code-review` i zasada

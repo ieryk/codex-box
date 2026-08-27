@@ -10,6 +10,9 @@ fi
 
 TARGET_USER=${TARGET_USER:-ubuntu}
 INSTALL_DOCKER=${INSTALL_DOCKER:-0}
+INSTALL_COMPUTER=${INSTALL_COMPUTER:-0}
+CPTR_VERSION=${CPTR_VERSION:-0.9.21}
+CPTR_PORT=${CPTR_PORT:-8000}
 BOX_REPO_REF=${BOX_REPO_REF:-main}
 AGENT_PLAYBOOK_REPO_URL=${AGENT_PLAYBOOK_REPO_URL:-git@github.com:ieryk/agent-playbook.git}
 AGENT_PLAYBOOK_REPO_REF=${AGENT_PLAYBOOK_REPO_REF:-master}
@@ -17,6 +20,18 @@ REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 [[ "$INSTALL_DOCKER" == 0 || "$INSTALL_DOCKER" == 1 ]] || {
   echo "INSTALL_DOCKER musi mieć wartość 0 albo 1." >&2
+  exit 1
+}
+[[ "$INSTALL_COMPUTER" == 0 || "$INSTALL_COMPUTER" == 1 ]] || {
+  echo "INSTALL_COMPUTER musi mieć wartość 0 albo 1." >&2
+  exit 1
+}
+[[ "$CPTR_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || {
+  echo "Nieprawidłowa wersja CPTR_VERSION=$CPTR_VERSION" >&2
+  exit 1
+}
+[[ "$CPTR_PORT" =~ ^[0-9]+$ ]] && (( CPTR_PORT >= 1024 && CPTR_PORT <= 65535 )) || {
+  echo "CPTR_PORT musi być liczbą od 1024 do 65535." >&2
   exit 1
 }
 
@@ -50,7 +65,7 @@ apt-get update
 apt-get install -y --no-install-recommends \
   age build-essential ca-certificates curl direnv fd-find file fzf gh git git-lfs \
   gnupg jq less locales lsb-release nano pkg-config ripgrep rsync shellcheck sudo \
-  tmux tree unattended-upgrades unzip vim xz-utils zip
+  tmux tree unattended-upgrades unzip vim xz-utils zip python3 python3-pip python3-venv
 
 git lfs install --system
 
@@ -138,7 +153,7 @@ fi
 systemctl enable --now tailscaled
 
 log "Narzędzia Codex Box"
-for tool in box-login box-clone box-update box-doctor box-playbook-sync codex-deepseek; do
+for tool in box-login box-clone box-update box-doctor box-playbook-sync box-computer codex-deepseek; do
   install -m 0755 "$REPO_DIR/bin/$tool" "/usr/local/bin/$tool"
 done
 
@@ -147,12 +162,21 @@ BOX_REPO_URL="$(git -C "$REPO_DIR" remote get-url origin 2>/dev/null || true)"
 BOX_REPO_REF="$BOX_REPO_REF"
 TARGET_USER="$TARGET_USER"
 INSTALL_DOCKER="$INSTALL_DOCKER"
+INSTALL_COMPUTER="$INSTALL_COMPUTER"
+CPTR_VERSION="$CPTR_VERSION"
+CPTR_PORT="$CPTR_PORT"
 AGENT_PLAYBOOK_REPO_URL="$AGENT_PLAYBOOK_REPO_URL"
 AGENT_PLAYBOOK_REPO_REF="$AGENT_PLAYBOOK_REPO_REF"
 EOF
 
 if [[ "$INSTALL_DOCKER" == 1 ]]; then
   "$REPO_DIR/scripts/install-docker.sh" "$TARGET_USER"
+fi
+
+if [[ "$INSTALL_COMPUTER" == 1 ]]; then
+  log "Open WebUI Computer"
+  CPTR_VERSION="$CPTR_VERSION" CPTR_PORT="$CPTR_PORT" \
+    "$REPO_DIR/scripts/install-computer.sh" "$TARGET_USER"
 fi
 
 log "Gotowe. Uruchom jako $TARGET_USER: box-doctor, a potem box-login"

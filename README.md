@@ -15,6 +15,7 @@ Infrastructure (Ampere A1). Repozytorium nie zawiera sekretów.
 - kompilatory i podstawowe biblioteki deweloperskie
 - 4 GB swapu i automatyczne aktualizacje bezpieczeństwa
 - opcjonalnie Docker Engine
+- opcjonalnie Open WebUI Computer jako mobilny interfejs PWA do tego samego Codexa
 - prywatny Agent Playbook z globalnym `AGENTS.md`, workflowami i osobistymi skills
 
 Bootstrap jest idempotentny: można go uruchamiać ponownie po zmianie repozytorium.
@@ -27,7 +28,7 @@ Na serwerze wykonaj:
 
 ```bash
 sudo git clone https://github.com/ieryk/codex-box.git /opt/codex-box
-sudo env TARGET_USER=ubuntu BOX_REPO_REF=main /opt/codex-box/bootstrap.sh
+sudo env TARGET_USER=ubuntu BOX_REPO_REF=main INSTALL_COMPUTER=1 /opt/codex-box/bootstrap.sh
 box-doctor
 box-login
 ```
@@ -93,7 +94,7 @@ codex
 
 1. Skopiuj `cloud-init.yaml` do pliku poza repozytorium.
 2. Sprawdź `BOX_REPO_URL` i przypnij `BOX_REPO_REF` do wydanego tagu,
-   np. `v0.1.2`.
+   np. `v0.2.0`.
 3. Wklej plik jako initialization script podczas tworzenia instancji OCI.
 4. Po pierwszym SSH poczekaj na zakończenie:
 
@@ -113,7 +114,7 @@ dysku.
 Przed użyciem cloud-init wydaj sprawdzoną wersję:
 
 ```bash
-git tag v0.1.2
+git tag v0.2.0
 git push origin main --tags
 ```
 
@@ -140,6 +141,53 @@ sudo /opt/codex-box/scripts/install-docker.sh ubuntu
 ```
 
 Po dodaniu użytkownika do grupy `docker` wyloguj się i zaloguj ponownie.
+
+## Open WebUI Computer na iPhonie
+
+Open WebUI Computer jest opcjonalny i domyślnie wyłączony w ręcznie uruchamianym
+bootstrapie. Cloud-init tego repozytorium włącza go jawnie. Instalacja jest
+przypięta do wersji `0.9.21` w osobnym virtualenv i działa jako użytkownik
+`ubuntu`, dlatego korzysta z tego samego katalogu domowego, logowania Codexa,
+repozytoriów i osobistych skills.
+
+Usługa nasłuchuje wyłącznie na `127.0.0.1:8000`. Nie dodawaj portu 8000 do OCI
+Security List ani Network Security Group. Prywatne HTTPS zapewnia Tailscale
+Serve.
+
+Po instalacji wykonaj jako zwykły użytkownik:
+
+```bash
+box-computer setup
+```
+
+Polecenie skonfiguruje Tailscale Serve i pokaże jednorazowy adres rejestracyjny.
+Otwórz go na iPhonie, utwórz konto administratora, a następnie dodaj Computer do
+ekranu początkowego: Safari → Udostępnij → Dodaj do ekranu początkowego.
+
+W Computer otwórz repozytorium z `~/src`, a następnie przejdź do
+`Settings → Admin → Agents` i dodaj profil:
+
+- Name: `Codex`
+- Type: `Codex`
+- Profile ID: `codex`
+- Command: `/home/ubuntu/.local/bin/codex`
+- Home i lista modeli: pozostaw puste
+- Mode: `auto`
+
+Pozostaw tryb zatwierdzeń czatu na `ask` albo `auto`. Tryb `full` pozwala agentowi
+wykonywać zapisy i polecenia bez pytania.
+
+Obsługa usługi:
+
+```bash
+box-computer status
+box-computer url
+box-computer logs
+box-computer restart
+```
+
+Open WebUI Computer ma taki sam zakres dostępu jak sesja SSH użytkownika
+`ubuntu`. Nie udostępniaj go publicznie i nie włączaj Tailscale Funnel.
 
 ## Sekrety
 
@@ -168,4 +216,7 @@ TCP/22 w OCI. Nie rób tych dwóch zmian w jednej sesji.
 - [Logowanie Codex na urządzeniach headless](https://learn.chatgpt.com/docs/auth#login-on-headless-devices)
 - [mise](https://mise.jdx.dev/getting-started.html)
 - [Tailscale na Linuxie](https://tailscale.com/kb/1031/install-linux)
+- [Open WebUI Computer](https://docs.openwebui.com/ecosystem/computer/)
+- [Codex jako backend Computer](https://docs.openwebui.com/ecosystem/computer/ai/coding-agents/)
+- [Tailscale Serve](https://tailscale.com/docs/reference/tailscale-cli/serve)
 - [Docker Engine na Ubuntu](https://docs.docker.com/engine/install/ubuntu/)

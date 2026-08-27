@@ -3,6 +3,12 @@ set -u
 
 export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 SECRETS_FILE="$HOME/.config/codex-box/secrets.env"
+INSTALL_COMPUTER=0
+CPTR_PORT=8000
+if [[ -r /etc/default/codex-box ]]; then
+  # shellcheck source=/dev/null
+  source /etc/default/codex-box
+fi
 if [[ -f "$SECRETS_FILE" ]]; then
   # shellcheck source=/dev/null
   source "$SECRETS_FILE"
@@ -30,7 +36,7 @@ echo "Dysk /:  $(df -h / | awk 'NR==2 {print $4 " wolne z " $2}')"
 echo "Swap:    $(free -h | awk '/^Swap:/ {print $2}')"
 echo
 
-for cmd in git gh codex codex-deepseek box-playbook-sync mise node tailscale tmux nano vi vim rg fd fzf jq direnv shellcheck age; do
+for cmd in git gh codex codex-deepseek box-playbook-sync box-computer mise node tailscale tmux nano vi vim rg fd fzf jq direnv shellcheck age; do
   check_command "$cmd"
 done
 
@@ -40,6 +46,22 @@ codex login status >/dev/null 2>&1 && echo "OK    Codex auth" || { echo "UWAGA C
 tailscale status >/dev/null 2>&1 && echo "OK    Tailscale" || { echo "UWAGA Tailscale: uruchom box-login"; warn=$((warn + 1)); }
 [[ -f "$HOME/.codex/deepseek-flash.config.toml" ]] && echo "OK    DeepSeek profile" || { echo "UWAGA brak profilu DeepSeek"; warn=$((warn + 1)); }
 [[ -n ${DEEPSEEK_API_KEY:-} ]] && echo "OK    DeepSeek API key" || echo "INFO  DeepSeek fallback nieaktywny: uruchom box-login"
+if [[ "$INSTALL_COMPUTER" == 1 || -f /etc/systemd/system/codex-box-computer.service ]]; then
+  if systemctl is-active --quiet codex-box-computer.service; then
+    echo "OK    Computer service"
+  else
+    echo "UWAGA Computer service nie działa: box-computer status"
+    warn=$((warn + 1))
+  fi
+  if curl -fsS "http://127.0.0.1:$CPTR_PORT/api/health" >/dev/null 2>&1; then
+    echo "OK    Computer health"
+  else
+    echo "UWAGA Computer health nie odpowiada: box-computer status"
+    warn=$((warn + 1))
+  fi
+else
+  echo "INFO  Open WebUI Computer wyłączony (INSTALL_COMPUTER=0)"
+fi
 [[ -L "$HOME/.codex/AGENTS.md" && -r "$HOME/.codex/AGENTS.md" ]] && echo "OK    Agent Playbook AGENTS.md" || { echo "UWAGA Agent Playbook AGENTS.md: uruchom box-playbook-sync"; warn=$((warn + 1)); }
 skill_count=$(find "$HOME/.agents/skills" -mindepth 2 -maxdepth 2 -name SKILL.md 2>/dev/null | wc -l | tr -d ' ')
 if (( skill_count > 0 )); then

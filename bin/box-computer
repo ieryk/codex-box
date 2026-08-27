@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+if [[ ${EUID} -eq 0 ]]; then
+  echo "Uruchom box-computer jako zwykły użytkownik, nie przez sudo." >&2
+  exit 1
+fi
+
+if [[ -r /etc/default/codex-box ]]; then
+  # shellcheck source=/dev/null
+  source /etc/default/codex-box
+fi
+
+CPTR_PORT=${CPTR_PORT:-8000}
+SERVICE=codex-box-computer.service
+LOCAL_URL="http://127.0.0.1:$CPTR_PORT"
+
+usage() {
+  cat <<'EOF'
+Użycie: box-computer <polecenie>
+
+  setup     podłącz Computer do prywatnego HTTPS przez Tailscale Serve
+  status    pokaż stan usługi, health check i konfigurację Tailscale Serve
+  url       pokaż prywatny adres HTTPS
+  logs      śledź logi usługi
+  restart   uruchom usługę ponownie
+EOF
+}
+
+require_service() {
+  if ! systemctl cat "$SERVICE" >/dev/null 2>&1; then
+    echo "Open WebUI Computer nie jest zainstalowany." >&2
+    echo "Włącz INSTALL_COMPUTER=1 i uruchom bootstrap Codex Box." >&2
+    exit 1
+  fi
+}
+
+tailscale_dns_name() {
+  tailscale status --json | jq -r '.Self.DNSName // empty' | sed 's/\.$//'
+}
+
+print_base_url() {
+  local dns_name
+  dns_name=$(tailscale_dns_name)
+  if [[ -z "$dns_name" ]]; then
+    echo "Nie udało się odczytać nazwy MagicDNS urządzenia." >&2
+    exit 1
+  fi
+
+  printf 'https://%s/\n' "$dns_name"
+}
+
+print_setup_url() {
+  local dns_name token
+  dns_name=$(tailscale_dns_name)
+  if [[ -z "$dns_name" ]]; then
+    echo "Nie udało się odczytać nazwy MagicDNS urządzenia." >&2
+    exit 1
+  fi
+
+  token=$(sudo journalctl -u "$SERVICE" --no-pager -n 300 2>/dev/null \
+    | sed -nE 's#.*\?token=([[:xdigit:]]{64}).*#\1#p' \
+    | tail -n 1)
+
+  if [[ -n "$token" ]]; then
+    printf 'https://%s/?token=%s\n' "$dns_name" "$token"
+  else
+    printf 'https://%s/\n' "$dns_name"
+    echo "Brak tokenu w ostatnich logach. Jeśli konto nie istnieje, wykonaj: box-computer restart" >&2
+  fi
+}
+
+command_name=${1:-}
+case "$command_name" in
+  setup)
+    require_service
+    systemctl is-active --quiet "$SERVICE" || sudo systemctl start "$SERVICE"
+    curl -fsS "$LOCAL_URL/api/health" >/dev/null || {
+      echo "Usługa działa, ale lokalny health check nie odpowiada: $LOCAL_URL" >&2
+      exit 1
+    }
+    tailscale status >/dev/null 2>&1 || {
+      echo "Tailscale nie jest zalogowany. Najpierw uruchom: box-login" >&2
+      exit 1
+    }
+
+    serve_status=$(sudo tailscale serve status 2>&1 || true)
+    if [[ -n "$serve_status" ]] \
+      && ! grep -qiE 'no serve config|not configured|127\.0\.0\.1:'"$CPTR_PORT" <<<"$serve_status"; then
+      echo "Tailscale Serve ma już inną konfigurację; niczego nie nadpisano:" >&2
+      echo "$serve_status" >&2
+      exit 1
+    fi
+
+    if ! sudo tailscale serve --bg --yes "$LOCAL_URL"; then
+      echo "Jeśli Tailscale pokazał link zgody na HTTPS, otwórz go i ponów: box-computer setup" >&2
+      exit 1
+    fi
+
+    echo
+    echo "Otwórz ten prywatny adres na iPhonie:"
+    print_setup_url
+    echo
+    echo "Po utworzeniu konta dodaj profil Codex w Settings → Admin → Agents."
+    ;;
+  status)
+    require_service
+    systemctl --no-pager --full status "$SERVICE" || true
+    echo
+    if curl -fsS "$LOCAL_URL/api/health"; then
+      echo
+    else
+      echo "Health check nie odpowiada: $LOCAL_URL" >&2
+    fi
+    echo
+    sudo tailscale serve status || true
+    ;;
+  url)
+    require_service
+    print_base_url
+    ;;
+  logs)
+    require_service
+    sudo journalctl -u "$SERVICE" -n 100 -f
+    ;;
+  restart)
+    require_service
+    sudo systemctl restart "$SERVICE"
+    echo "Usługa uruchomiona ponownie."
+    ;;
+  -h|--help|help|'')
+    usage
+    ;;
+  *)
+    echo "Nieznane polecenie: $command_name" >&2
+    usage >&2
+    exit 2
+    ;;
+esac

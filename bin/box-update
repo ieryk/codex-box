@@ -3,6 +3,9 @@ set -Eeuo pipefail
 
 source /etc/default/codex-box
 REPO_DIR=/opt/codex-box
+INSTALL_COMPUTER=${INSTALL_COMPUTER:-0}
+CPTR_VERSION=${CPTR_VERSION:-0.9.21}
+CPTR_PORT=${CPTR_PORT:-8000}
 
 if [[ ! -d "$REPO_DIR/.git" ]]; then
   echo "Brak repozytorium w $REPO_DIR" >&2
@@ -21,5 +24,11 @@ else
   sudo git -C "$REPO_DIR" checkout --detach "$BOX_REPO_REF"
 fi
 
-sudo env TARGET_USER="$TARGET_USER" INSTALL_DOCKER="$INSTALL_DOCKER" BOX_REPO_REF="$BOX_REPO_REF" "$REPO_DIR/bootstrap.sh"
-
+sudo env \
+  TARGET_USER="$TARGET_USER" \
+  INSTALL_DOCKER="$INSTALL_DOCKER" \
+  INSTALL_COMPUTER="$INSTALL_COMPUTER" \
+  CPTR_VERSION="$CPTR_VERSION" \
+  CPTR_PORT="$CPTR_PORT" \
+  BOX_REPO_REF="$BOX_REPO_REF" \
+  "$REPO_DIR/bootstrap.sh"

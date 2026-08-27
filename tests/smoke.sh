@@ -10,8 +10,10 @@ scripts=(
   bin/box-update
   bin/box-doctor
   bin/box-playbook-sync
+  bin/box-computer
   bin/codex-deepseek
   scripts/install-docker.sh
+  scripts/install-computer.sh
   tests/smoke.sh
 )
 
@@ -22,6 +24,9 @@ done
 grep -q '^#cloud-config$' "$ROOT/cloud-init.yaml"
 grep -q 'BOX_REPO_URL=' "$ROOT/cloud-init.yaml"
 grep -q 'INSTALL_DOCKER=' "$ROOT/cloud-init.yaml"
+grep -q 'INSTALL_COMPUTER=' "$ROOT/cloud-init.yaml"
+grep -q 'CPTR_VERSION=' "$ROOT/cloud-init.yaml"
+grep -q 'CPTR_PORT=' "$ROOT/cloud-init.yaml"
 grep -q 'AGENT_PLAYBOOK_REPO_URL=' "$ROOT/cloud-init.yaml"
 grep -Fq 'HOME="$TARGET_HOME"' "$ROOT/bootstrap.sh"
 grep -Fq 'MISE_DATA_DIR="$TARGET_HOME/.local/share/mise"' "$ROOT/bootstrap.sh"
@@ -32,8 +37,13 @@ grep -Fq 'export EDITOR="${EDITOR:-nano}"' "$ROOT/bootstrap.sh"
 grep -Fq "sed -i '/^# >>> codex-box >>>$/,/^# <<< codex-box <<<$/" "$ROOT/bootstrap.sh"
 grep -Fq 'CODEX_NON_INTERACTIVE=1 sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bootstrap.sh"
+grep -Fq 'box-computer' "$ROOT/bootstrap.sh"
+grep -Fq 'scripts/install-computer.sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bin/box-login"
-grep -Fq 'tmux nano vi vim rg' "$ROOT/bin/box-doctor"
+grep -Fq 'box-playbook-sync box-computer mise' "$ROOT/bin/box-doctor"
+grep -Fq 'cptr[agents,docs,mcp]==$CPTR_VERSION' "$ROOT/scripts/install-computer.sh"
+grep -Fq 'cptr run --headless --host 127.0.0.1' "$ROOT/scripts/install-computer.sh"
+grep -Fq 'tailscale serve --bg --yes "$LOCAL_URL"' "$ROOT/bin/box-computer"
 grep -q 'model = "deepseek-v4-flash"' "$ROOT/config/deepseek-flash.config.toml"
 grep -q 'env_key = "DEEPSEEK_API_KEY"' "$ROOT/config/deepseek-flash.config.toml"
 if rg -n 'experimental_bearer_token|sk-[A-Za-z0-9]' "$ROOT/config"; then
