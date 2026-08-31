@@ -5,6 +5,7 @@ export PATH="$HOME/.local/bin:$HOME/.local/share/mise/shims:$PATH"
 SECRETS_FILE="$HOME/.config/codex-box/secrets.env"
 INSTALL_COMPUTER=0
 CPTR_PORT=8000
+PERSONAL_WORKSPACE_DIR=${PERSONAL_WORKSPACE_DIR:-$HOME/personal-workspace}
 
 count_skills() {
   local skills_dir=${1:-$HOME/.agents/skills}
@@ -63,7 +64,7 @@ echo "Dysk /:  $(df -h / | awk 'NR==2 {print $4 " wolne z " $2}')"
 echo "Swap:    $(free -h | awk '/^Swap:/ {print $2}')"
 echo
 
-for cmd in git gh codex codex-deepseek box-playbook-sync box-computer mise node tailscale tmux nano vi vim rg fd fzf jq direnv shellcheck age; do
+for cmd in git gh codex codex-deepseek box-playbook-sync box-workspace-sync box-computer mise node tailscale tmux nano vi vim rg fd fzf jq direnv shellcheck age; do
   check_command "$cmd"
 done
 
@@ -84,6 +85,19 @@ if tailscale status >/dev/null 2>&1; then
   echo "OK    Tailscale"
 else
   echo "UWAGA Tailscale: uruchom box-login"
+  warn=$((warn + 1))
+fi
+if [[ -d "$PERSONAL_WORKSPACE_DIR/.git" ]]; then
+  echo "OK    Personal workspace"
+else
+  echo "UWAGA Personal workspace: uruchom box-workspace-sync setup"
+  warn=$((warn + 1))
+fi
+if systemctl is-enabled --quiet codex-box-workspace-snapshot.timer 2>/dev/null && \
+  systemctl is-active --quiet codex-box-workspace-snapshot.timer 2>/dev/null; then
+  echo "OK    Workspace snapshot timer"
+else
+  echo "UWAGA Workspace snapshot timer nie działa: box-workspace-sync status"
   warn=$((warn + 1))
 fi
 if [[ -f "$HOME/.codex/deepseek-flash.config.toml" ]]; then

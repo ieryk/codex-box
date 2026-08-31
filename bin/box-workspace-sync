@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+CONFIG_FILE=${CODEX_BOX_CONFIG_FILE:-/etc/default/codex-box}
+if [[ -r "$CONFIG_FILE" ]]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+fi
+
+PERSONAL_WORKSPACE_REPO_URL=${PERSONAL_WORKSPACE_REPO_URL:-git@github.com:ieryk/personal-workspace.git}
+PERSONAL_WORKSPACE_REPO_REF=${PERSONAL_WORKSPACE_REPO_REF:-master}
+PERSONAL_WORKSPACE_DIR=${PERSONAL_WORKSPACE_DIR:-$HOME/personal-workspace}
+LOCK_ROOT=${XDG_RUNTIME_DIR:-$HOME/.cache/codex-box}
+LOCK_DIR="$LOCK_ROOT/workspace-snapshot.lock"
+
+die() {
+  echo "BŁĄD: $*" >&2
+  exit 1
+}
+
+info() {
+  echo "==> $*"
+}
+
+validate_repo() {
+  local origin branch nested
+
+  [[ -d "$PERSONAL_WORKSPACE_DIR/.git" ]] || die "Brak repozytorium w $PERSONAL_WORKSPACE_DIR. Uruchom: box-workspace-sync setup"
+  origin=$(git -C "$PERSONAL_WORKSPACE_DIR" remote get-url origin 2>/dev/null || true)
+  [[ "$origin" == "$PERSONAL_WORKSPACE_REPO_URL" ]] || die "Nieoczekiwany origin. Oczekiwano: $PERSONAL_WORKSPACE_REPO_URL"
+  branch=$(git -C "$PERSONAL_WORKSPACE_DIR" branch --show-current)
+  [[ "$branch" == "$PERSONAL_WORKSPACE_REPO_REF" ]] || die "Repo jest na gałęzi '$branch', oczekiwano '$PERSONAL_WORKSPACE_REPO_REF'."
+
+  nested=$(find "$PERSONAL_WORKSPACE_DIR" -mindepth 2 \( -type d -o -type f \) -name .git -print -quit)
+  [[ -z "$nested" ]] || die "Wykryto zagnieżdżone repo Git. Projekty trzymaj w ~/src, nie w personal-workspace."
+}
+
+acquire_lock() {
+  mkdir -p "$LOCK_ROOT"
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    die "Snapshot już trwa. Po przerwanym procesie usuń $LOCK_DIR"
+  fi
+  trap 'rmdir "$LOCK_DIR" 2>/dev/null || true' EXIT
+}
+
+guard_staged_changes() {
+  local path size
+  local max_size=$((25 * 1024 * 1024))
+
+  while IFS= read -r -d '' path; do
+    case "$path" in
+      README.md|PROJECT_BRIEF.md|AGENTS.md|.gitignore|inbox/*|notes/*|drafts/*|outputs/*|state/*|templates/*) ;;
+      *) die "Synchronizacja zatrzymana: plik poza dozwoloną strukturą ($path)." ;;
+    esac
+  done < <(git -C "$PERSONAL_WORKSPACE_DIR" diff --cached --name-only -z)
+
+  while IFS= read -r -d '' path; do
+    case "/$path" in
+      */.env|*/.env.*|*/secrets/*|*/.ssh/*|*/.codex/*|*/auth.json|*.pem|*.key|*.p12|*.pfx)
+        die "Synchronizacja zatrzymana: niedozwolony plik z sekretem ($path)."
+        ;;
+    esac
+
+    size=$(git -C "$PERSONAL_WORKSPACE_DIR" cat-file -s ":$path" 2>/dev/null || printf '0')
+    if [[ "$size" =~ ^[0-9]+$ ]] && (( size > max_size )); then
+      die "Synchronizacja zatrzymana: $path przekracza 25 MB."
+    fi
+  done < <(git -C "$PERSONAL_WORKSPACE_DIR" diff --cached --name-only --diff-filter=ACMR -z)
+
+  if git -C "$PERSONAL_WORKSPACE_DIR" diff --cached --no-ext-diff --unified=0 | \
+    grep -Eqi '^\+.*(BEGIN (OPENSSH|RSA|EC|DSA) PRIVATE KEY|gh[pousr]_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{20,}|(OPENAI|DEEPSEEK|ANTHROPIC)_API_KEY[[:space:]]*=|AWS_SECRET_ACCESS_KEY[[:space:]]*=)'; then
+    die "Synchronizacja zatrzymana: wykryto prawdopodobny sekret. Treść nie została wyświetlona."
+  fi
+}
+
+snapshot_repo() {
+  if [[ ! -d "$PERSONAL_WORKSPACE_DIR/.git" ]]; then
+    info "Workspace nie jest jeszcze skonfigurowany. Uruchom: box-workspace-sync setup"
+    return 0
+  fi
+
+  acquire_lock
+  validate_repo
+  git -C "$PERSONAL_WORKSPACE_DIR" add -A
+  if git -C "$PERSONAL_WORKSPACE_DIR" diff --cached --quiet; then
+    info "Brak zmian do zapisania."
+    return
+  fi
+
+  guard_staged_changes
+  git -C "$PERSONAL_WORKSPACE_DIR" \
+    -c user.name='Codex Box' \
+    -c user.email='codex-box@localhost' \
+    commit -m "chore(workspace): automatic snapshot $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+}
+
+push_repo() {
+  local local_head remote_head
+
+  snapshot_repo
+  validate_repo
+  git -C "$PERSONAL_WORKSPACE_DIR" fetch --prune origin "$PERSONAL_WORKSPACE_REPO_REF"
+  local_head=$(git -C "$PERSONAL_WORKSPACE_DIR" rev-parse HEAD)
+  remote_head=$(git -C "$PERSONAL_WORKSPACE_DIR" rev-parse "refs/remotes/origin/$PERSONAL_WORKSPACE_REPO_REF" 2>/dev/null || true)
+
+  if [[ -z "$remote_head" ]]; then
+    git -C "$PERSONAL_WORKSPACE_DIR" push -u origin "$PERSONAL_WORKSPACE_REPO_REF"
+  elif [[ "$local_head" == "$remote_head" ]]; then
+    info "Workspace jest aktualny."
+  elif git -C "$PERSONAL_WORKSPACE_DIR" merge-base --is-ancestor "$remote_head" "$local_head"; then
+    git -C "$PERSONAL_WORKSPACE_DIR" push origin "$PERSONAL_WORKSPACE_REPO_REF"
+  elif git -C "$PERSONAL_WORKSPACE_DIR" merge-base --is-ancestor "$local_head" "$remote_head"; then
+    git -C "$PERSONAL_WORKSPACE_DIR" merge --ff-only "origin/$PERSONAL_WORKSPACE_REPO_REF"
+  else
+    die "Historia lokalna i zdalna są rozbieżne. Automat niczego nie nadpisze; rozwiąż konflikt ręcznie."
+  fi
+}
+
+setup_repo() {
+  if [[ -e "$PERSONAL_WORKSPACE_DIR" && ! -d "$PERSONAL_WORKSPACE_DIR/.git" ]]; then
+    die "$PERSONAL_WORKSPACE_DIR już istnieje i nie jest repozytorium Git."
+  fi
+  if [[ ! -d "$PERSONAL_WORKSPACE_DIR/.git" ]]; then
+    mkdir -p "$(dirname -- "$PERSONAL_WORKSPACE_DIR")"
+    git clone --branch "$PERSONAL_WORKSPACE_REPO_REF" --single-branch \
+      "$PERSONAL_WORKSPACE_REPO_URL" "$PERSONAL_WORKSPACE_DIR"
+  fi
+  snapshot_repo
+}
+
+show_status() {
+  echo "Workspace: $PERSONAL_WORKSPACE_DIR"
+  echo "Repo:      $PERSONAL_WORKSPACE_REPO_URL"
+  echo "Gałąź:    $PERSONAL_WORKSPACE_REPO_REF"
+  if [[ -d "$PERSONAL_WORKSPACE_DIR/.git" ]]; then
+    git -C "$PERSONAL_WORKSPACE_DIR" status --short --branch
+    git -C "$PERSONAL_WORKSPACE_DIR" log -1 --format='Ostatni zapis: %h %s (%cr)'
+  else
+    echo "Stan:      nieskonfigurowany"
+  fi
+  if command -v systemctl >/dev/null 2>&1; then
+    systemctl is-enabled codex-box-workspace-snapshot.timer 2>/dev/null || true
+    systemctl is-active codex-box-workspace-snapshot.timer 2>/dev/null || true
+  fi
+}
+
+case ${1:-status} in
+  setup) setup_repo ;;
+  snapshot) snapshot_repo ;;
+  push|sync) push_repo ;;
+  status) show_status ;;
+  logs) journalctl -u codex-box-workspace-snapshot.service -n 100 --no-pager ;;
+  *)
+    echo "Użycie: box-workspace-sync [setup|snapshot|push|status|logs]" >&2
+    exit 2
+    ;;
+esac

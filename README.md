@@ -17,6 +17,8 @@ Infrastructure (Ampere A1). Repozytorium nie zawiera sekretów.
 - opcjonalnie Docker Engine
 - opcjonalnie Open WebUI Computer jako mobilny interfejs PWA do tego samego Codexa
 - prywatny Agent Playbook z globalnym `AGENTS.md`, workflowami i osobistymi skills
+- prywatny `personal-workspace` na notatki, szkice, stan pracy i rezultaty
+- lokalne snapshoty `personal-workspace` co 15 minut z ochroną przed przypadkowym dodaniem sekretów
 
 Bootstrap jest idempotentny: można go uruchamiać ponownie po zmianie repozytorium.
 Domyślnym edytorem terminalowym jest `nano`; pełny `vim` pozostaje dostępny dla
@@ -39,11 +41,48 @@ Po uwierzytelnieniu GitHuba `box-login` klonuje prywatne repozytorium
 - globalne instrukcje jako `~/.codex/AGENTS.md`;
 - osobiste skills jako dowiązania w `~/.agents/skills/`.
 
+Podłącza też prywatne `ieryk/personal-workspace` jako
+`~/personal-workspace`. W Computer można dodać ten katalog jako osobny workspace
+o nazwie `Home`. Repozytoria projektowe nadal należą do `~/src`.
+
 Późniejsze aktualizacje playbooka wykonuje polecenie:
 
 ```bash
 box-playbook-sync
 ```
+
+### Personal workspace
+
+Podział odpowiedzialności pozostaje prosty:
+
+- `codex-box` odtwarza serwer i narzędzia;
+- `agent-playbook` przechowuje sposoby pracy, instrukcje i skills;
+- `personal-workspace` przechowuje trwały stan pracy poza projektami;
+- `~/src/*` zawiera właściwe repozytoria projektowe.
+
+Do `personal-workspace` należą tylko: `inbox`, `notes`, `drafts`, `outputs`,
+`state` i `templates` oraz jego dokumentacja główna. Nie umieszczaj w nim
+zagnieżdżonych repozytoriów, katalogów `.codex`/`.ssh`, plików `.env`, kluczy ani
+tokenów.
+
+Timer co 15 minut tworzy **lokalny commit**. Nie wysyła danych automatycznie do
+GitHuba. Po zakończeniu pracy wykonaj świadomą synchronizację:
+
+```bash
+box-workspace-sync push
+```
+
+Pozostałe polecenia:
+
+```bash
+box-workspace-sync status
+box-workspace-sync snapshot
+box-workspace-sync logs
+```
+
+Przed commitem działa kontrola dozwolonych ścieżek, rozmiaru plików i typowych
+sekretów. Jest to dodatkowa bariera, nie menedżer sekretów. Przy rozbieżnej
+historii narzędzie zatrzyma się bez force-pusha i bez automatycznego rebase.
 
 Agent Playbook pozostaje prywatny. Nie zawiera tokenów, sesji Codexa,
 reguł zatwierdzeń ani cache pluginów.
@@ -94,7 +133,7 @@ codex
 
 1. Skopiuj `cloud-init.yaml` do pliku poza repozytorium.
 2. Sprawdź `BOX_REPO_URL` i przypnij `BOX_REPO_REF` do wydanego tagu,
-   np. `v0.2.1`.
+   np. `v0.3.0`.
 3. Wklej plik jako initialization script podczas tworzenia instancji OCI.
 4. Po pierwszym SSH poczekaj na zakończenie:
 
@@ -114,7 +153,7 @@ dysku.
 Przed użyciem cloud-init wydaj sprawdzoną wersję:
 
 ```bash
-git tag v0.2.1
+git tag v0.3.0
 git push origin main --tags
 ```
 

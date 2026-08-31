@@ -16,6 +16,10 @@ CPTR_PORT=${CPTR_PORT:-8000}
 BOX_REPO_REF=${BOX_REPO_REF:-main}
 AGENT_PLAYBOOK_REPO_URL=${AGENT_PLAYBOOK_REPO_URL:-git@github.com:ieryk/agent-playbook.git}
 AGENT_PLAYBOOK_REPO_REF=${AGENT_PLAYBOOK_REPO_REF:-master}
+PERSONAL_WORKSPACE_REPO_URL=${PERSONAL_WORKSPACE_REPO_URL:-git@github.com:ieryk/personal-workspace.git}
+PERSONAL_WORKSPACE_REPO_REF=${PERSONAL_WORKSPACE_REPO_REF:-master}
+PERSONAL_WORKSPACE_DIR=${PERSONAL_WORKSPACE_DIR:-}
+WORKSPACE_SNAPSHOT_MINUTES=${WORKSPACE_SNAPSHOT_MINUTES:-15}
 REPO_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
 
 [[ "$INSTALL_DOCKER" == 0 || "$INSTALL_DOCKER" == 1 ]] || {
@@ -34,6 +38,10 @@ if [[ ! "$CPTR_PORT" =~ ^[0-9]+$ ]] || (( CPTR_PORT < 1024 || CPTR_PORT > 65535 
   echo "CPTR_PORT musi być liczbą od 1024 do 65535." >&2
   exit 1
 fi
+if [[ ! "$WORKSPACE_SNAPSHOT_MINUTES" =~ ^[0-9]+$ ]] || (( WORKSPACE_SNAPSHOT_MINUTES < 5 || WORKSPACE_SNAPSHOT_MINUTES > 1440 )); then
+  echo "WORKSPACE_SNAPSHOT_MINUTES musi być liczbą od 5 do 1440." >&2
+  exit 1
+fi
 
 if ! id "$TARGET_USER" >/dev/null 2>&1; then
   echo "Nie istnieje użytkownik TARGET_USER=$TARGET_USER" >&2
@@ -42,6 +50,7 @@ fi
 
 TARGET_HOME=$(getent passwd "$TARGET_USER" | cut -d: -f6)
 TARGET_GROUP=$(id -gn "$TARGET_USER")
+PERSONAL_WORKSPACE_DIR=${PERSONAL_WORKSPACE_DIR:-$TARGET_HOME/personal-workspace}
 
 log() { printf '\n==> %s\n' "$*"; }
 as_user() {
@@ -153,7 +162,7 @@ fi
 systemctl enable --now tailscaled
 
 log "Narzędzia Codex Box"
-for tool in box-login box-clone box-update box-doctor box-playbook-sync box-computer codex-deepseek; do
+for tool in box-login box-clone box-update box-doctor box-playbook-sync box-workspace-sync box-computer codex-deepseek; do
   install -m 0755 "$REPO_DIR/bin/$tool" "/usr/local/bin/$tool"
 done
 
@@ -167,7 +176,15 @@ CPTR_VERSION="$CPTR_VERSION"
 CPTR_PORT="$CPTR_PORT"
 AGENT_PLAYBOOK_REPO_URL="$AGENT_PLAYBOOK_REPO_URL"
 AGENT_PLAYBOOK_REPO_REF="$AGENT_PLAYBOOK_REPO_REF"
+PERSONAL_WORKSPACE_REPO_URL="$PERSONAL_WORKSPACE_REPO_URL"
+PERSONAL_WORKSPACE_REPO_REF="$PERSONAL_WORKSPACE_REPO_REF"
+PERSONAL_WORKSPACE_DIR="$PERSONAL_WORKSPACE_DIR"
+WORKSPACE_SNAPSHOT_MINUTES="$WORKSPACE_SNAPSHOT_MINUTES"
 EOF
+
+log "Lokalne snapshoty personal-workspace"
+WORKSPACE_SNAPSHOT_MINUTES="$WORKSPACE_SNAPSHOT_MINUTES" \
+  "$REPO_DIR/scripts/install-workspace-sync.sh" "$TARGET_USER"
 
 if [[ "$INSTALL_DOCKER" == 1 ]]; then
   "$REPO_DIR/scripts/install-docker.sh" "$TARGET_USER"

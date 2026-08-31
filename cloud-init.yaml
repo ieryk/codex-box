@@ -13,7 +13,7 @@ write_files:
     permissions: "0644"
     content: |
       BOX_REPO_URL="https://github.com/ieryk/codex-box.git"
-      BOX_REPO_REF="v0.2.1"
+      BOX_REPO_REF="v0.3.0"
       TARGET_USER="ubuntu"
       INSTALL_DOCKER="0"
       INSTALL_COMPUTER="1"
@@ -21,6 +21,10 @@ write_files:
       CPTR_PORT="8000"
       AGENT_PLAYBOOK_REPO_URL="git@github.com:ieryk/agent-playbook.git"
       AGENT_PLAYBOOK_REPO_REF="master"
+      PERSONAL_WORKSPACE_REPO_URL="git@github.com:ieryk/personal-workspace.git"
+      PERSONAL_WORKSPACE_REPO_REF="master"
+      PERSONAL_WORKSPACE_DIR="/home/ubuntu/personal-workspace"
+      WORKSPACE_SNAPSHOT_MINUTES="15"
 
 runcmd:
   - [bash, -lc, 'set -a; source /etc/default/codex-box; set +a; rm -rf /opt/codex-box.new /opt/codex-box.previous; git clone --branch "$BOX_REPO_REF" --depth 1 "$BOX_REPO_URL" /opt/codex-box.new; if [ -d /opt/codex-box ]; then mv /opt/codex-box /opt/codex-box.previous; fi; mv /opt/codex-box.new /opt/codex-box; /opt/codex-box/bootstrap.sh >>/var/log/codex-box-bootstrap.log 2>&1']

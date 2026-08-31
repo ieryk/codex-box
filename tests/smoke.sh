@@ -10,11 +10,14 @@ scripts=(
   bin/box-update
   bin/box-doctor
   bin/box-playbook-sync
+  bin/box-workspace-sync
   bin/box-computer
   bin/codex-deepseek
   scripts/install-docker.sh
   scripts/install-computer.sh
+  scripts/install-workspace-sync.sh
   tests/smoke.sh
+  tests/workspace-sync.sh
 )
 
 for script in "${scripts[@]}"; do
@@ -28,6 +31,8 @@ grep -q 'INSTALL_COMPUTER=' "$ROOT/cloud-init.yaml"
 grep -q 'CPTR_VERSION=' "$ROOT/cloud-init.yaml"
 grep -q 'CPTR_PORT=' "$ROOT/cloud-init.yaml"
 grep -q 'AGENT_PLAYBOOK_REPO_URL=' "$ROOT/cloud-init.yaml"
+grep -q 'PERSONAL_WORKSPACE_REPO_URL=' "$ROOT/cloud-init.yaml"
+grep -q 'WORKSPACE_SNAPSHOT_MINUTES=' "$ROOT/cloud-init.yaml"
 grep -Fq "HOME=\"\$TARGET_HOME\"" "$ROOT/bootstrap.sh"
 grep -Fq "MISE_DATA_DIR=\"\$TARGET_HOME/.local/share/mise\"" "$ROOT/bootstrap.sh"
 grep -Fq "\"\$TARGET_HOME/.local/share/mise\"" "$ROOT/bootstrap.sh"
@@ -37,10 +42,12 @@ grep -Fq "export EDITOR=\"\${EDITOR:-nano}\"" "$ROOT/bootstrap.sh"
 grep -Fq "sed -i '/^# >>> codex-box >>>$/,/^# <<< codex-box <<<$/" "$ROOT/bootstrap.sh"
 grep -Fq 'CODEX_NON_INTERACTIVE=1 sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bootstrap.sh"
+grep -Fq 'box-workspace-sync' "$ROOT/bootstrap.sh"
+grep -Fq 'scripts/install-workspace-sync.sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-computer' "$ROOT/bootstrap.sh"
 grep -Fq 'scripts/install-computer.sh' "$ROOT/bootstrap.sh"
 grep -Fq 'box-playbook-sync' "$ROOT/bin/box-login"
-grep -Fq 'box-playbook-sync box-computer mise' "$ROOT/bin/box-doctor"
+grep -Fq 'box-playbook-sync box-workspace-sync box-computer mise' "$ROOT/bin/box-doctor"
 grep -Fq "cptr[agents,docs,mcp]==\$CPTR_VERSION" "$ROOT/scripts/install-computer.sh"
 grep -Fq 'cptr run --headless --host 127.0.0.1' "$ROOT/scripts/install-computer.sh"
 grep -Fq "tailscale serve --bg --yes \"\$LOCAL_URL\"" "$ROOT/bin/box-computer"
@@ -73,5 +80,7 @@ if command -v shellcheck >/dev/null 2>&1; then
 else
   echo "shellcheck niedostępny — pomijam lint"
 fi
+
+"$ROOT/tests/workspace-sync.sh"
 
 echo "Smoke tests: OK"
